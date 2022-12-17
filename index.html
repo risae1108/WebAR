@@ -121,7 +121,7 @@
       
       new THREE.MTLLoader()
         .setPath( 'models/' )
-        .load( 'fish-2.mtl', function ( materials ) {
+        .load( 'ei.glb', function ( materials ) {
           materials.preload();
           new THREE.OBJLoader()
             .setMaterials( materials )
