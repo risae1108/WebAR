@@ -1,6 +1,7 @@
 <html>
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.js"></script>
+    <script src="https://cdn.rawgit.com/mrdoob/three.js/r122/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/3.1.0/three.js/build/ar.js"></script>
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <title>WebAR</title>
@@ -20,19 +21,20 @@
     
     var scene, camera, renderer, clock, deltaTime, totalTime;
     var arToolkitSource, arToolkitContext;
-    var markerRoot1;
-    var mesh1;
+    let mixer;
     
     initialize();
     animate();
     
     function initialize()
     {
+      //シーンを作成
       scene = new THREE.Scene();
     
-      let ambientLight = new THREE.AmbientLight( 0xcccccc, 1.0 );
-      scene.add( ambientLight );
-            
+      /*let ambientLight = new THREE.AmbientLight( 0xcccccc, 1.0 );
+      scene.add( ambientLight );*/
+          
+      //カメラを追加
       camera = new THREE.Camera();
       scene.add(camera);
     
@@ -50,11 +52,20 @@
       clock = new THREE.Clock();
       deltaTime = 0;
       totalTime = 0;
-      
-      ////////////////////////////////////////////////////////////
-      // setup arToolkitSource
-      ////////////////////////////////////////////////////////////
     
+    
+      // create atToolkitContext
+      arToolkitContext = new THREEx.ArToolkitContext({
+        cameraParametersUrl: 'data/camera_para.dat',
+        detectionMode: 'mono'
+      });
+
+      // copy projection matrix to camera when initialization complete
+            arToolkitContext.init( function onCompleted(){
+        camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+      });
+    
+      //Webカメラを使用する
       arToolkitSource = new THREEx.ArToolkitSource({
         sourceType : 'webcam',
       });
@@ -77,60 +88,42 @@
       window.addEventListener('resize', function(){
         onResize()
       });
-      
-      ////////////////////////////////////////////////////////////
-      // setup arToolkitContext
-      ////////////////////////////////////////////////////////////	
-    
-      // create atToolkitContext
-      arToolkitContext = new THREEx.ArToolkitContext({
-        cameraParametersUrl: 'data/camera_para.dat',
-        detectionMode: 'mono'
-      });
-      
-      // copy projection matrix to camera when initialization complete
-      arToolkitContext.init( function onCompleted(){
-        camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
-      });
-    
-      ////////////////////////////////////////////////////////////
-      // setup markerRoots
-      ////////////////////////////////////////////////////////////
-    
+
       // build markerControls
-      markerRoot1 = new THREE.Group();
-      scene.add(markerRoot1);
-      let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
-        type: 'pattern', patternUrl: "data/hiro.patt",
+      markerRoot = new THREE.Group();
+      scene.add(markerRoot);
+
+      let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+        type: 'pattern',
+        patternUrl: "data/hiro.patt",
       })
     
-      let geometry1 = new THREE.PlaneBufferGeometry(1,1, 4,4);
-      let loader = new THREE.TextureLoader();
-      let material1 = new THREE.MeshBasicMaterial( { color: 0x0000ff, opacity: 0.5 } );
-      mesh1 = new THREE.Mesh( geometry1, material1 );
-      mesh1.rotation.x = -Math.PI/2;
-      markerRoot1.add( mesh1 );
-      
-      function onProgress(xhr) { console.log( (xhr.loaded / xhr.total * 100) + '% loaded' ); }
-      function onError(xhr) { console.log( 'An error happened' ); }
-      
-      new THREE.MTLLoader()
-        .setPath( 'models/' )
-        .load( 'ei.glb', function ( materials ) {
-          materials.preload();
-          new THREE.OBJLoader()
-            .setMaterials( materials )
-            .setPath( 'models/' )
-            .load( 'ei.glb', function ( group ) {
-              mesh0 = group.children[0];
-              mesh0.material.side = THREE.DoubleSide;
-              mesh0.position.y = 0.25;
-              mesh0.scale.set(0.25,0.25,0.25);
-              markerRoot1.add(mesh0);
-            }, onProgress, onError );
-        });
+      let loader = new THREE.GLTFLoader();
+      let url = 'models/ei.glb';
+                  
+      loader.load(
+        url,
+        (gltf) => {
+          const animations = gltf.animations;
+          const model = gltf.scene;
+
+          if (animations && animations.length) {
+            mixer = new THREE.AnimationMixer(model);
+
+            for (let i = 0; i < animations.length; i++) {
+              const animation = animations[i];
+              const action = mixer.clipAction(animation);
+
+              action.play();
+            }
+          }
+
+          model.scale.set(1, 1, 1);
+          model.position.set(0, 0, 0);
+          markerRoot.add(gltf.scene);
+        }
+      );
     }
-    
     
     function update()
     {
