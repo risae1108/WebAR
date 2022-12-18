@@ -1,154 +1,151 @@
-<html>
-  <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.js"></script>
-    <script src="https://cdn.rawgit.com/mrdoob/three.js/r122/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/3.1.0/three.js/build/ar.js"></script>
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <title>WebAR</title>
-    <!-- include three.js library
-    <script src='js/three.js'></script>
-    <script src='js/OBJLoader.js'></script>
-    <script src='js/MTLLoader.js'></script>
-    <script src="jsartoolkit5/artoolkit.min.js"></script>
-    <script src="jsartoolkit5/artoolkit.api.js"></script>
-    <script src="threex/threex-artoolkitsource.js"></script>
-    <script src="threex/threex-artoolkitcontext.js"></script>
-    <script src="threex/threex-arbasecontrols.js"></script>
-    <script src="threex/threex-armarkercontrols.js"></script> -->
-  </head>
-  <body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
-    <script>
-    
-    var scene, camera, renderer, clock, deltaTime, totalTime;
-    var arToolkitSource, arToolkitContext;
-    let mixer;
-    
-    initialize();
-    animate();
-    
-    function initialize()
+<!DOCTYPE html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.js"></script>
+  <script src="https://cdn.rawgit.com/mrdoob/three.js/r122/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.rawgit.com/mrdoob/three.js/r122/examples/js/loaders/MTLLoader.js"></script>
+  <script src="https://cdn.rawgit.com/mrdoob/three.js/r122/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.1.0/three.js/build/ar.js"></script>
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<title>test</title>
+</head>
+
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
+<script>
+
+var scene, camera, renderer, clock, deltaTime, totalTime;
+
+var arToolkitSource, arToolkitContext;
+
+var markerRoot1;
+
+var mesh1;
+
+initialize();
+animate();
+
+function initialize()
+{
+  //シーンを作成
+	scene = new THREE.Scene();
+
+	//カメラを追加		
+	camera = new THREE.Camera();
+	scene.add(camera);
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+  //renderer.setClearColor(new THREE.Color(0xffffff));
+	renderer.setSize( 640, 480 );
+  renderer.outputEncoding = THREE.GammaEncoding;
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+		{
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
+		}	
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	// handle resize event
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+
+	// create atToolkitContext
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: 'data/camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+	// copy projection matrix to camera when initialization complete
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+	// build markerControls
+	markerRoot1 = new THREE.Group();
+	scene.add(markerRoot1);
+	let markerControls1 = new THREEx.ArMarkerControls(
+    arToolkitContext,
+    markerRoot1, 
     {
-      //シーンを作成
-      scene = new THREE.Scene();
-    
-      let ambientLight = new THREE.AmbientLight( 0xcccccc, 1.0 );
-      scene.add( ambientLight );
-          
-      //カメラを追加
-      camera = new THREE.Camera();
-      scene.add(camera);
-    
-      renderer = new THREE.WebGLRenderer({
-        antialias : true,
-        alpha: true
-      });
-      renderer.setClearColor(new THREE.Color('lightgrey'), 0)
-      renderer.setSize( 640, 480 );
-      renderer.domElement.style.position = 'absolute'
-      renderer.domElement.style.top = '0px'
-      renderer.domElement.style.left = '0px'
-      document.body.appendChild( renderer.domElement );
-    
-      clock = new THREE.Clock();
-      deltaTime = 0;
-      totalTime = 0;
-    
-    
-      // create atToolkitContext
-      arToolkitContext = new THREEx.ArToolkitContext({
-        cameraParametersUrl: 'data/camera_para.dat',
-        detectionMode: 'mono'
-      });
+		  type: 'pattern',
+      patternUrl: "data/hiro.patt",
+	  }
+  )
 
-      // copy projection matrix to camera when initialization complete
-            arToolkitContext.init( function onCompleted(){
-        camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
-      });
-    
-      //Webカメラを使用する
-      arToolkitSource = new THREEx.ArToolkitSource({
-        sourceType : 'webcam',
-      });
-    
-      function onResize()
-      {
-        arToolkitSource.onResize()	
-        arToolkitSource.copySizeTo(renderer.domElement)	
-        if ( arToolkitContext.arController !== null )
-        {
-          arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)	
-        }	
-      }
-    
-      arToolkitSource.init(function onReady(){
-        onResize()
-      });
-      
-      // handle resize event
-      window.addEventListener('resize', function(){
-        onResize()
-      });
+	let geometry1 = new THREE.PlaneBufferGeometry(1,1, 4,4);
+	let loader = new THREE.TextureLoader();
+	let material1 = new THREE.MeshBasicMaterial( { color: 0x0000ff, opacity: 0.5 } );
+	mesh1 = new THREE.Mesh( geometry1, material1 );
+	mesh1.rotation.x = -Math.PI/2;
+	markerRoot1.add( mesh1 );
+	
+	function onProgress(xhr) { console.log( (xhr.loaded / xhr.total * 100) + '% loaded' ); }
+	function onError(xhr) { console.log( 'An error happened' ); }
+        
+  new THREE.GLTFLoader()
+    .load('models/20221217_chaei.glb', function ( gltf ) {
+        model = gltf.scene;
+        //model.material.side = THREE.DoubleSide;
+        //model.material.trasparent = true;
+        model.traverse((object) => { //モデルの構成要素
+          if(object.isMesh) { //その構成要素がメッシュだったら
+          object.material.trasparent = true;//透明許可
+          object.material.opacity = 1;//透過
+          object.material.depthTest = true;//陰影で消える部分
+        }})
+        model.position.set(0, 0, 5);
+        model.scale.set(0.25 ,0.25, 0.25);
+        markerRoot1.add(model);
+      }, onProgress, onError );
+}
 
-      // build markerControls
-      markerRoot = new THREE.Group();
-      scene.add(markerRoot);
+function update()
+{
+	// update artoolkit on every frame
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+}
 
-      let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-        type: 'pattern',
-        patternUrl: "data/hiro.patt",
-      })
-    
-      let loader = new THREE.GLTFLoader();
-      let url = 'models/ei.glb';
-                  
-      loader.load(
-        url,
-        (gltf) => {
-          const animations = gltf.animations;
-          const model = gltf.scene;
 
-          if (animations && animations.length) {
-            mixer = new THREE.AnimationMixer(model);
+function render()
+{
+	renderer.render( scene, camera );
+}
 
-            for (let i = 0; i < animations.length; i++) {
-              const animation = animations[i];
-              const action = mixer.clipAction(animation);
 
-              action.play();
-            }
-          }
+function animate()
+{
+	requestAnimationFrame(animate);
+	deltaTime = clock.getDelta();
+	totalTime += deltaTime;
+	update();
+	render();
+}
 
-          model.scale.set(1, 1, 1);
-          model.position.set(0, 0, 0);
-          markerRoot.add(gltf.scene);
-        }
-      );
-    }
-    
-    function update()
-    {
-      // update artoolkit on every frame
-      if ( arToolkitSource.ready !== false )
-        arToolkitContext.update( arToolkitSource.domElement );
-    }
-    
-    
-    function render()
-    {
-      renderer.render( scene, camera );
-    }
-    
-    
-    function animate()
-    {
-      requestAnimationFrame(animate);
-      deltaTime = clock.getDelta();
-      totalTime += deltaTime;
-      update();
-      render();
-    }
-    
-    </script>
-    
-    </body>
+</script>
+
+</body>
 </html>
